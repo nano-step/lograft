@@ -1,5 +1,17 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import {
+  PARSE_KQL_TOOL_NAME,
+  PARSE_KQL_DESCRIPTION,
+  ParseKqlInput,
+  runParseKql,
+} from "./server/tools/parse-kql.js";
+import { fail } from "./errors.js";
 
 const SERVER_NAME = "lograft";
 const SERVER_VERSION = "0.1.0-beta.0";
@@ -13,21 +25,6 @@ export const log = {
   },
 };
 
-/**
- * R6 Layer 2 — Runtime stdout guard.
- *
- * MCP servers communicate over stdio: stdout = JSON-RPC frames; stderr = logs.
- * A single stray `process.stdout.write` from a transitive dep (banner,
- * postinstall noise, debug print) will corrupt the protocol and break every
- * MCP client silently. Layer 1 (eslint) catches our own code; this layer is
- * the runtime backstop.
- *
- * Strategy: replace `process.stdout.write` with a wrapper that throws unless
- * the SDK transport is the active caller. We flip `sdkOwnsStdout = true`
- * immediately before handing stdout to the transport via `server.connect()`.
- * In practice `server.connect()` never resolves (it owns the process for the
- * server's lifetime), so the flag stays true thereafter.
- */
 let sdkOwnsStdout = false;
 
 function installStdoutGuard(): void {
@@ -40,6 +37,59 @@ function installStdoutGuard(): void {
     }
     return originalWrite(...args);
   }) as typeof process.stdout.write;
+}
+
+interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: z.ZodTypeAny;
+  run: (input: unknown) => Promise<unknown>;
+}
+
+function toJsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
+  // Pragmatic minimal converter for our handful of input schemas; we expose
+  // the shape so MCP clients can build a tool form. Full JSON Schema
+  // generation isn't worth a heavy dep at this stage.
+  const def = (schema as { _def?: { typeName?: string } })._def;
+  if (def?.typeName === "ZodObject") {
+    const shape = (schema as unknown as { shape: Record<string, z.ZodTypeAny> }).shape;
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+    for (const [key, fieldSchema] of Object.entries(shape)) {
+      properties[key] = toJsonSchema(fieldSchema);
+      if (!(fieldSchema as { isOptional?: () => boolean }).isOptional?.()) {
+        required.push(key);
+      }
+    }
+    const result: Record<string, unknown> = {
+      type: "object",
+      properties,
+      additionalProperties: false,
+    };
+    if (required.length > 0) result.required = required;
+    return result;
+  }
+  if (def?.typeName === "ZodString") return { type: "string" };
+  if (def?.typeName === "ZodNumber") return { type: "number" };
+  if (def?.typeName === "ZodBoolean") return { type: "boolean" };
+  if (def?.typeName === "ZodOptional") {
+    const inner = (schema as unknown as { _def: { innerType: z.ZodTypeAny } })._def.innerType;
+    return toJsonSchema(inner);
+  }
+  return {};
+}
+
+function buildToolRegistry(): Map<string, ToolDefinition> {
+  const registry = new Map<string, ToolDefinition>();
+
+  registry.set(PARSE_KQL_TOOL_NAME, {
+    name: PARSE_KQL_TOOL_NAME,
+    description: PARSE_KQL_DESCRIPTION,
+    inputSchema: ParseKqlInput,
+    run: (input) => runParseKql(input as ParseKqlInput),
+  });
+
+  return registry;
 }
 
 export async function startServer(): Promise<void> {
@@ -57,8 +107,79 @@ export async function startServer(): Promise<void> {
     },
   );
 
-  const transport = new StdioServerTransport();
+  const registry = buildToolRegistry();
 
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: Array.from(registry.values()).map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: toJsonSchema(tool.inputSchema),
+    })),
+  }));
+
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    const tool = registry.get(name);
+    if (!tool) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              fail("INPUT_INVALID", `unknown tool: ${name}`, {
+                hint: `available: ${Array.from(registry.keys()).join(", ")}`,
+                retryable: false,
+              }),
+            ),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const parsed = tool.inputSchema.safeParse(args ?? {});
+    if (!parsed.success) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              fail("INPUT_INVALID", `invalid input for ${name}`, {
+                hint: parsed.error.message,
+                retryable: false,
+              }),
+            ),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    try {
+      const result = await tool.run(parsed.data);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      };
+    } catch (err) {
+      log.error(`tool ${name} threw:`, err);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              fail("INTERNAL", (err as Error).message ?? "unknown error", {
+                hint: "tool handler threw; see lograft stderr",
+                retryable: false,
+              }),
+            ),
+          },
+        ],
+        isError: true,
+      };
+    }
+  });
+
+  const transport = new StdioServerTransport();
   log.info(`starting ${SERVER_NAME}@${SERVER_VERSION} on stdio transport`);
 
   sdkOwnsStdout = true;
