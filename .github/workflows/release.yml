@@ -71,17 +71,7 @@ jobs:
             esac
           fi
 
-      - name: Diagnose npm token scope
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NHO_NPM_TOKEN }}
-        run: |
-          set -e
-          echo "=== whoami (NHO_NPM_TOKEN) ==="
-          npm whoami || echo "(whoami failed)"
-          echo "=== token type (granular vs classic) — check if name is reserved ==="
-          npm view lograft 2>&1 | head -10 || echo "(404 — name available)"
-
       - name: Publish to npm
-        run: pnpm publish --tag "${{ steps.tag.outputs.tag }}" --no-git-checks --access public
+        run: pnpm publish --tag "${{ steps.tag.outputs.tag }}" --no-git-checks --access public --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NHO_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
