@@ -1,0 +1,51 @@
+# lograft.config.toml — generic issue-tracker template
+#
+# Replace MYPROJ with your project key and the example URLs with your
+# actual issue tracker / repo URLs. This file is intentionally generic —
+# lograft has no organisation-specific defaults baked in (plan D9 / D29).
+
+[joinPolicy]
+# Common ticket-id pattern: any uppercase prefix + dash + digits. Adjust to
+# the regex used by your issue tracker. Use Jira-style "MYPROJ-1234",
+# Linear-style "LIN-1234", or anything else.
+ticketRegex = "[A-Z]+-\\d+"
+
+# Optional: service names that should be treated as primary correlation keys.
+# Leave empty to disable service-allowlist matching.
+serviceAllowlist = ["Payments", "Auth", "Webhooks"]
+
+# Field name used by App Insights for trace correlation. Default works for
+# Application Insights stock SDKs. Change if your custom logger writes a
+# different field (e.g. "traceId").
+operationIdField = "operation_Id"
+
+# Window (minutes) for commit-to-row proximity tiebreaker. AFTER an explicit
+# key match (operation_Id / ticket / service), commits within this window
+# of the log timestamp are attached. Set to 0 to disable.
+tiebreakerWindowMin = 10
+
+[output]
+# Output dir for report bundles. Relative paths are resolved against cwd.
+# Leave unset to use './reports/' (auto-created).
+# dir = "/abs/path/to/reports"
+
+# When set, ticket IDs in reports become clickable links. The ticket id is
+# appended via URL path-join; lograft refuses non-https URLs (D33).
+# ticketLinkBase = "https://your-org.atlassian.net/browse"
+
+# Which formats to render. Defaults to all three.
+formats = ["md", "json", "html"]
+
+[redaction]
+# Add org-specific redaction rules on top of lograft's defaults
+# (emails, JWT, GUIDs in auth context, Authorization headers, IPv4/IPv6,
+# private RFC1918 ranges, internal hostnames .internal/.corp/.local).
+extraRules = [
+  # Example: scrub internal customer ids
+  # { name = "customer-id", pattern = "cust-[0-9a-f]{16}", flags = "g", replacement = "[REDACTED:customer-id]" }
+]
+
+[repo]
+# git log lookback window
+sinceDays = 14
+maxCommits = 200

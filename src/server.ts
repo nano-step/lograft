@@ -29,6 +29,12 @@ import {
   CorrelateInput,
   runCorrelate,
 } from "./server/tools/correlate.js";
+import {
+  INVESTIGATE_TOOL_NAME,
+  INVESTIGATE_DESCRIPTION,
+  InvestigateInput,
+  runInvestigate,
+} from "./server/tools/investigate.js";
 import { fail } from "./errors.js";
 
 const SERVER_NAME = "lograft";
@@ -127,6 +133,13 @@ function buildToolRegistry(): Map<string, ToolDefinition> {
     description: CORRELATE_DESCRIPTION,
     inputSchema: CorrelateInput,
     run: (input) => runCorrelate(input as CorrelateInput),
+  });
+
+  registry.set(INVESTIGATE_TOOL_NAME, {
+    name: INVESTIGATE_TOOL_NAME,
+    description: INVESTIGATE_DESCRIPTION,
+    inputSchema: InvestigateInput,
+    run: (input) => runInvestigate(input as InvestigateInput),
   });
 
   return registry;

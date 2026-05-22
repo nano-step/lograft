@@ -45,7 +45,11 @@ export class RawDataAdapter implements LogSourceAdapter {
     return { ok: true };
   }
 
-  async fetch(input: AdapterInput): Promise<NormalizedRowset> {
+  async fetch(
+    input: AdapterInput,
+    _signal: AbortSignal,
+  ): Promise<NormalizedRowset> {
+    void _signal;
     if (input.kind !== "raw") {
       throw new Error(`RawDataAdapter cannot handle input kind=${input.kind}`);
     }
