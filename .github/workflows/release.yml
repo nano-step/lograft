@@ -50,8 +50,12 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Verify package contents (dry-run)
-        run: pnpm pack --dry-run
+      - name: Verify package contents
+        run: |
+          pnpm pack
+          ls -lh lograft-*.tgz
+          tar -tzf lograft-*.tgz | head -50
+          rm lograft-*.tgz
 
       - name: Resolve dist-tag
         id: tag
