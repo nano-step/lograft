@@ -11,6 +11,12 @@ import {
   ParseKqlInput,
   runParseKql,
 } from "./server/tools/parse-kql.js";
+import {
+  NORMALIZE_TOOL_NAME,
+  NORMALIZE_DESCRIPTION,
+  NormalizeInput,
+  runNormalize,
+} from "./server/tools/normalize.js";
 import { fail } from "./errors.js";
 
 const SERVER_NAME = "lograft";
@@ -87,6 +93,13 @@ function buildToolRegistry(): Map<string, ToolDefinition> {
     description: PARSE_KQL_DESCRIPTION,
     inputSchema: ParseKqlInput,
     run: (input) => runParseKql(input as ParseKqlInput),
+  });
+
+  registry.set(NORMALIZE_TOOL_NAME, {
+    name: NORMALIZE_TOOL_NAME,
+    description: NORMALIZE_DESCRIPTION,
+    inputSchema: NormalizeInput,
+    run: (input) => runNormalize(input as NormalizeInput),
   });
 
   return registry;
