@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Dist-tag for npm publish (beta | latest)"
+        required: true
+        default: "beta"
+        type: choice
+        options:
+          - beta
+          - latest
+
+permissions:
+  contents: read
+  id-token: write   # required for npm provenance (SLSA L3)
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify package contents (dry-run)
+        run: pnpm pack --dry-run
+
+      - name: Resolve dist-tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            # tag-triggered: betas go to @beta, plain semver tags go to @latest
+            REF="${GITHUB_REF#refs/tags/}"
+            case "$REF" in
+              *beta*|*alpha*|*rc*) echo "tag=beta" >> "$GITHUB_OUTPUT" ;;
+              *)                    echo "tag=latest" >> "$GITHUB_OUTPUT" ;;
+            esac
+          fi
+
+      - name: Publish to npm
+        run: pnpm publish --tag "${{ steps.tag.outputs.tag }}" --no-git-checks --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

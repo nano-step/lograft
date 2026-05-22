@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: build + test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  generic-purity:
+    name: generic-purity (no org strings in src/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject WIN / playSWEEPS / playstudios in src/
+        run: |
+          set -e
+          PATTERN='\bWIN-[0-9]+\b|\bplaySWEEPS\b|\bplaystudios\b'
+          if grep -REi --include='*.ts' --include='*.tsx' --include='*.js' \
+               --include='*.mjs' --include='*.cjs' "${PATTERN}" src/ bin/ 2>/dev/null; then
+            echo "::error::Found org-specific strings under src/ or bin/. See plan D29 / R9."
+            exit 1
+          fi
+          echo "OK — src/ and bin/ are org-neutral."
+
+  pii-fixtures:
+    name: pii-fixtures (no PII in test fixtures)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject PII in fixtures
+        run: |
+          set -e
+          # Internal-domain emails, RFC1918 IPs, internal hostname suffixes.
+          PATTERN='@playstudios\.com|@geargames\.com|\.internal\b|\.corp\b|\.local\b'
+          PATTERN+='|\b10\.[0-9]+\.[0-9]+\.[0-9]+\b'
+          PATTERN+='|\b192\.168\.[0-9]+\.[0-9]+\b'
+          PATTERN+='|\b172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+\b'
+          if [ -d test/fixtures ]; then
+            if grep -RE "${PATTERN}" test/fixtures/ 2>/dev/null; then
+              echo "::error::PII detected in test/fixtures/. Run scripts/sanitize-fixture.ts."
+              exit 1
+            fi
+          fi
+          echo "OK — no PII detected in fixtures."

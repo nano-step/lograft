@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a new tool, adapter, or capability for lograft.
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: lograft is **generic by default**. Org-specific behaviour
+        belongs in user TOML config, not `src/`. New adapters (Datadog,
+        CloudWatch, …) are welcome — see `CONTRIBUTING.md` first.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of feature?
+      options:
+        - New MCP tool
+        - New LogSourceAdapter (Datadog / CloudWatch / Loki / Elastic / etc.)
+        - New redaction rule
+        - New report format
+        - Performance / size improvement
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

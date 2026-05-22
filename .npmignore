@@ -1,0 +1,16 @@
+# `files` whitelist in package.json is the primary control. This file is
+# defense-in-depth in case a transitive script ignores `files`.
+src/
+bin/*.ts
+test/
+coverage/
+.github/
+.husky/
+*.test.ts
+tsconfig*.json
+jest.config.*
+.eslintrc*
+.gitignore
+.npmignore
+node_modules/
+*.log
