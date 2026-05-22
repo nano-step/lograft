@@ -1,0 +1,3 @@
+AppExceptions
+| where TimeGenerated > ago(30m)
+| project TimeGenerated, Message, OperationId, AppRoleName

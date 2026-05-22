@@ -1,0 +1,17 @@
+{
+  "tables": [
+    {
+      "name": "PrimaryResult",
+      "columns": [
+        { "name": "TimeGenerated", "type": "datetime" },
+        { "name": "Message", "type": "string" },
+        { "name": "operation_Id", "type": "string" },
+        { "name": "cloud_RoleName", "type": "string" }
+      ],
+      "rows": [
+        ["2026-05-22T15:00:00Z", "TokenValidationException MYPROJ-101 reproducer", "op-ccc-333", "AuthService"],
+        ["2026-05-22T15:00:42Z", "TokenValidationException repeat", "op-ccc-333", "AuthService"]
+      ]
+    }
+  ]
+}

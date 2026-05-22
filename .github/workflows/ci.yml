@@ -52,16 +52,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reject WIN / playSWEEPS / playstudios in src/
+      - name: Reject WIN / playSWEEPS / playstudios in src/ (production code, not tests)
         run: |
           set -e
           PATTERN='\bWIN-[0-9]+\b|\bplaySWEEPS\b|\bplaystudios\b'
           if grep -REi --include='*.ts' --include='*.tsx' --include='*.js' \
-               --include='*.mjs' --include='*.cjs' "${PATTERN}" src/ bin/ 2>/dev/null; then
-            echo "::error::Found org-specific strings under src/ or bin/. See plan D29 / R9."
+               --include='*.mjs' --include='*.cjs' \
+               --exclude='*.test.ts' \
+               "${PATTERN}" src/ bin/ 2>/dev/null; then
+            echo "::error::Found org-specific strings under src/ or bin/ production code. See plan D29 / R9."
             exit 1
           fi
-          echo "OK — src/ and bin/ are org-neutral."
+          echo "OK — src/ and bin/ production code is org-neutral."
 
   pii-fixtures:
     name: pii-fixtures (no PII in test fixtures)

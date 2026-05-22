@@ -1,0 +1,5 @@
+timestamp,message,operation_Id,cloud_RoleName,severityLevel
+2026-05-22T13:58:00Z,InvalidSignatureException after PROJ-42 deploy,op-aaa-111,PaymentService,3
+2026-05-22T13:59:12Z,InvalidSignatureException retry failed,op-aaa-111,PaymentService,3
+2026-05-22T14:00:30Z,InvalidSignatureException — circuit opened,op-aaa-111,PaymentService,3
+2026-05-22T14:02:15Z,health check ok,op-bbb-222,HealthService,1

@@ -1,0 +1,4 @@
+timestamp,level,message,source
+2026-05-22T08:00:00Z,info,startup ok,Worker
+2026-05-22T08:05:00Z,warn,queue depth rising,Worker
+2026-05-22T08:10:00Z,error,unhandled rejection,Worker

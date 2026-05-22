@@ -1,0 +1,6 @@
+// Sanitized fixture — no real org names or PII
+// Investigates payment failures correlated with PROJ-42
+exceptions
+| where timestamp > ago(1h)
+| where cloud_RoleName == "PaymentService"
+| project timestamp, message, operation_Id, cloud_RoleName, severityLevel
