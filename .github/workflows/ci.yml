@@ -22,7 +22,7 @@ jobs:
       matrix:
         node: ["20", "22"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v4
         with:
@@ -51,7 +51,7 @@ jobs:
     name: generic-purity (no org strings in src/)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Reject WIN / playSWEEPS / playstudios in src/ (production code, not tests)
         run: |
           set -e
@@ -69,7 +69,7 @@ jobs:
     name: pii-fixtures (no PII in test fixtures)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Reject PII in fixtures
         run: |
           set -e
