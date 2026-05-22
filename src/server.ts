@@ -23,6 +23,12 @@ import {
   GatherRepoContextInput,
   runGatherRepoContext,
 } from "./server/tools/gather-repo-context.js";
+import {
+  CORRELATE_TOOL_NAME,
+  CORRELATE_DESCRIPTION,
+  CorrelateInput,
+  runCorrelate,
+} from "./server/tools/correlate.js";
 import { fail } from "./errors.js";
 
 const SERVER_NAME = "lograft";
@@ -114,6 +120,13 @@ function buildToolRegistry(): Map<string, ToolDefinition> {
     inputSchema: GatherRepoContextInput,
     run: (input) =>
       runGatherRepoContext(input as GatherRepoContextInput),
+  });
+
+  registry.set(CORRELATE_TOOL_NAME, {
+    name: CORRELATE_TOOL_NAME,
+    description: CORRELATE_DESCRIPTION,
+    inputSchema: CorrelateInput,
+    run: (input) => runCorrelate(input as CorrelateInput),
   });
 
   return registry;
