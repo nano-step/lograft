@@ -51,7 +51,8 @@
     "prepare": "pnpm build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@jest/globals": "^30.4.1",
