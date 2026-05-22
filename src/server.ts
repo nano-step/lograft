@@ -17,6 +17,12 @@ import {
   NormalizeInput,
   runNormalize,
 } from "./server/tools/normalize.js";
+import {
+  GATHER_REPO_CONTEXT_TOOL_NAME,
+  GATHER_REPO_CONTEXT_DESCRIPTION,
+  GatherRepoContextInput,
+  runGatherRepoContext,
+} from "./server/tools/gather-repo-context.js";
 import { fail } from "./errors.js";
 
 const SERVER_NAME = "lograft";
@@ -100,6 +106,14 @@ function buildToolRegistry(): Map<string, ToolDefinition> {
     description: NORMALIZE_DESCRIPTION,
     inputSchema: NormalizeInput,
     run: (input) => runNormalize(input as NormalizeInput),
+  });
+
+  registry.set(GATHER_REPO_CONTEXT_TOOL_NAME, {
+    name: GATHER_REPO_CONTEXT_TOOL_NAME,
+    description: GATHER_REPO_CONTEXT_DESCRIPTION,
+    inputSchema: GatherRepoContextInput,
+    run: (input) =>
+      runGatherRepoContext(input as GatherRepoContextInput),
   });
 
   return registry;
