@@ -1,0 +1,19 @@
+{
+  "tables": [
+    {
+      "name": "PrimaryResult",
+      "columns": [
+        { "name": "TimeGenerated", "type": "datetime" },
+        { "name": "Message", "type": "string" },
+        { "name": "SeverityLevel", "type": "int" },
+        { "name": "operation_Id", "type": "string" },
+        { "name": "cloud_RoleName", "type": "string" }
+      ],
+      "rows": [
+        ["2026-05-22T13:58:00Z", "InvalidSignatureException", 3, "op-aaa-111", "Sweeps.Skrill"],
+        ["2026-05-22T13:59:12Z", "InvalidSignatureException after PROJ-42 deploy", 3, "op-aaa-111", "Sweeps.Skrill"],
+        ["2026-05-22T14:01:34Z", "ok", 1, "op-bbb-222", "Sweeps.Health"]
+      ]
+    }
+  ]
+}
