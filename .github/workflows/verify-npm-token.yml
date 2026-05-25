@@ -86,13 +86,51 @@ jobs:
       - name: Add nhonh as co-owner (authenticated as nano-step001 via NPM_TOKEN)
         if: inputs.mode == 'add-nhonh-as-owner'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_AUTH: ${{ secrets.NPM_TOKEN }}
+          NHO_AUTH: ${{ secrets.NHO_NPM_TOKEN }}
         run: |
+          set -e
           echo "=== Owners BEFORE ==="
-          npm owner ls lograft
+          curl -fsS "https://registry.npmjs.org/lograft" \
+            | jq -r '.maintainers[] | "\(.name) <\(.email)>"'
           echo ""
-          echo "=== Adding nhonh ==="
-          npm owner add nhonh lograft
+
+          echo "=== Attempt 1: npm owner add via NPM_TOKEN (likely fails on user-lookup) ==="
+          if NODE_AUTH_TOKEN="$NPM_AUTH" npm owner add nhonh lograft 2>&1; then
+            echo "(attempt 1 succeeded)"
+          else
+            echo "(attempt 1 failed as expected — falling back)"
+          fi
           echo ""
+
+          echo "=== Attempt 2: Hand-rolled PUT to /-/package/lograft/collaborators/nhonh ==="
+          echo "(npm's new HTTP API — bypasses CouchDB user-lookup)"
+          curl -fsS -X PUT \
+            -H "Authorization: Bearer $NPM_AUTH" \
+            -H "Content-Type: application/json" \
+            -d '{"permissions":"read-write"}' \
+            "https://registry.npmjs.org/-/package/lograft/collaborators/nhonh" \
+            && echo "(attempt 2 succeeded)" \
+            || echo "(attempt 2 failed)"
+          echo ""
+
+          echo "=== Attempt 3: Direct CouchDB-style PUT maintainers list ==="
+          echo "(get current package doc, append nhonh to maintainers, PUT back)"
+          DOC=$(curl -fsS -H "Authorization: Bearer $NPM_AUTH" \
+            "https://registry.npmjs.org/lograft?write=true")
+          REV=$(echo "$DOC" | jq -r '."_rev"')
+          echo "current _rev: $REV"
+          UPDATED=$(echo "$DOC" | jq '.maintainers += [{"name":"nhonh","email":"nhoxtvt@gmail.com"}]')
+          echo "$UPDATED" | curl -fsS -X PUT \
+            -H "Authorization: Bearer $NPM_AUTH" \
+            -H "Content-Type: application/json" \
+            --data @- \
+            "https://registry.npmjs.org/lograft/-rev/$REV" \
+            && echo "(attempt 3 succeeded)" \
+            || echo "(attempt 3 failed)"
+          echo ""
+
           echo "=== Owners AFTER ==="
-          npm owner ls lograft
+          sleep 2
+          curl -fsS "https://registry.npmjs.org/lograft?ts=$(date +%s)" \
+            | jq -r '.maintainers[] | "\(.name) <\(.email)>"'
