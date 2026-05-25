@@ -3,18 +3,21 @@ name: Verify npm token
 on:
   workflow_dispatch:
     inputs:
-      secret_name:
-        description: "Which secret to test"
+      mode:
+        description: "What to do"
         required: true
-        default: "NHO_NPM_TOKEN"
+        default: "verify-both"
         type: choice
         options:
-          - NPM_TOKEN
-          - NHO_NPM_TOKEN
+          - verify-NPM_TOKEN
+          - verify-NHO_NPM_TOKEN
+          - verify-both
+          - add-nhonh-as-owner
+          - list-owners
 
 jobs:
-  verify:
-    name: whoami + ping (no publish)
+  run:
+    name: npm token / ownership ops
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-node@v4
@@ -22,8 +25,14 @@ jobs:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Test NPM_TOKEN
-        if: inputs.secret_name == 'NPM_TOKEN'
+      - name: List package owners (read-only, no auth needed)
+        if: inputs.mode == 'list-owners' || inputs.mode == 'verify-both'
+        run: |
+          echo "=== Current owners of lograft ==="
+          npm owner ls lograft
+
+      - name: Verify NPM_TOKEN (whoami + ping)
+        if: inputs.mode == 'verify-NPM_TOKEN' || inputs.mode == 'verify-both'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -36,12 +45,9 @@ jobs:
           echo ""
           echo "=== ping ==="
           npm ping
-          echo ""
-          echo "=== access ls-packages (publish-scope check) ==="
-          npm access ls-packages 2>&1 | head -20 || true
 
-      - name: Test NHO_NPM_TOKEN
-        if: inputs.secret_name == 'NHO_NPM_TOKEN'
+      - name: Verify NHO_NPM_TOKEN (whoami + ping)
+        if: inputs.mode == 'verify-NHO_NPM_TOKEN' || inputs.mode == 'verify-both'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NHO_NPM_TOKEN }}
         run: |
@@ -54,6 +60,17 @@ jobs:
           echo ""
           echo "=== ping ==="
           npm ping
+
+      - name: Add nhonh as co-owner (authenticated as nano-step001 via NPM_TOKEN)
+        if: inputs.mode == 'add-nhonh-as-owner'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "=== Owners BEFORE ==="
+          npm owner ls lograft
           echo ""
-          echo "=== access ls-packages (publish-scope check) ==="
-          npm access ls-packages 2>&1 | head -20 || true
+          echo "=== Adding nhonh ==="
+          npm owner add nhonh lograft
+          echo ""
+          echo "=== Owners AFTER ==="
+          npm owner ls lograft
