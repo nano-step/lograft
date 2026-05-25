@@ -4,6 +4,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { z } from "zod";
 import {
   PARSE_KQL_TOOL_NAME,
@@ -38,7 +41,24 @@ import {
 import { fail } from "./errors.js";
 
 const SERVER_NAME = "lograft";
-const SERVER_VERSION = "0.1.0-beta.0";
+
+function readPackageVersion(): string {
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  for (const candidate of [
+    join(thisDir, "..", "package.json"),
+    join(thisDir, "..", "..", "package.json"),
+  ]) {
+    try {
+      const pkg = JSON.parse(readFileSync(candidate, "utf8")) as { version?: string };
+      if (typeof pkg.version === "string" && pkg.version.length > 0) return pkg.version;
+    } catch {
+      continue;
+    }
+  }
+  return "0.0.0-unknown";
+}
+
+const SERVER_VERSION = readPackageVersion();
 
 export const log = {
   info: (...args: unknown[]): void => {
