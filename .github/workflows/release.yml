@@ -71,9 +71,9 @@ jobs:
             esac
           fi
 
-      - name: Diagnose NHO_NPM_TOKEN
+      - name: Diagnose NPM_TOKEN
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NHO_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "=== whoami ==="
           npm whoami 2>&1 || echo "(whoami failed)"
@@ -87,4 +87,4 @@ jobs:
       - name: Publish to npm
         run: pnpm publish --tag "${{ steps.tag.outputs.tag }}" --no-git-checks --access public --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NHO_NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
