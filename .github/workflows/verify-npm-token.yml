@@ -89,7 +89,7 @@ jobs:
           NPM_AUTH: ${{ secrets.NPM_TOKEN }}
           NHO_AUTH: ${{ secrets.NHO_NPM_TOKEN }}
         run: |
-          set -e
+          set +e
           echo "=== Owners BEFORE ==="
           curl -fsS "https://registry.npmjs.org/lograft" \
             | jq -r '.maintainers[] | "\(.name) <\(.email)>"'
@@ -114,12 +114,16 @@ jobs:
             || echo "(attempt 2 failed)"
           echo ""
 
-          echo "=== Attempt 3: Look up nhonh's real email using NHO_NPM_TOKEN (self-read) ==="
-          NHONH_PROFILE=$(curl -fsS -H "Authorization: Bearer $NHO_AUTH" \
-            "https://registry.npmjs.org/-/npm/v1/user" 2>&1)
-          echo "profile lookup: $(echo "$NHONH_PROFILE" | head -c 200)"
-          NHONH_EMAIL=$(echo "$NHONH_PROFILE" | jq -r '.email // empty')
-          NHONH_NAME=$(echo "$NHONH_PROFILE" | jq -r '.name // .username // empty')
+          echo "=== Attempt 3: Look up nhonh's real email (multiple endpoints) ==="
+          for EP in "/-/npm/v1/user" "/-/whoami" "/-/user/org.couchdb.user:nhonh"; do
+            echo "--- trying $EP ---"
+            RESP=$(curl -sS -w "\nHTTP:%{http_code}" -H "Authorization: Bearer $NHO_AUTH" "https://registry.npmjs.org$EP" 2>&1)
+            echo "$RESP" | head -c 500
+            echo ""
+          done
+          NHONH_PROFILE=$(curl -sS -H "Authorization: Bearer $NHO_AUTH" "https://registry.npmjs.org/-/npm/v1/user" 2>/dev/null)
+          NHONH_EMAIL=$(echo "$NHONH_PROFILE" | jq -r '.email // empty' 2>/dev/null)
+          NHONH_NAME=$(echo "$NHONH_PROFILE" | jq -r '.name // .username // empty' 2>/dev/null)
           echo "resolved: name='$NHONH_NAME' email='$NHONH_EMAIL'"
           if [ -z "$NHONH_EMAIL" ]; then
             echo "(could not resolve nhonh's email, falling back to nhoxtvt@gmail.com)"
