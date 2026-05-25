@@ -1,0 +1,59 @@
+name: Verify npm token
+
+on:
+  workflow_dispatch:
+    inputs:
+      secret_name:
+        description: "Which secret to test"
+        required: true
+        default: "NHO_NPM_TOKEN"
+        type: choice
+        options:
+          - NPM_TOKEN
+          - NHO_NPM_TOKEN
+
+jobs:
+  verify:
+    name: whoami + ping (no publish)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Test NPM_TOKEN
+        if: inputs.secret_name == 'NPM_TOKEN'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "=== Secret: NPM_TOKEN ==="
+          echo "set? $([ -n "$NODE_AUTH_TOKEN" ] && echo yes || echo no)"
+          echo "prefix: $(echo "$NODE_AUTH_TOKEN" | cut -c1-8)"
+          echo ""
+          echo "=== whoami ==="
+          npm whoami
+          echo ""
+          echo "=== ping ==="
+          npm ping
+          echo ""
+          echo "=== access ls-packages (publish-scope check) ==="
+          npm access ls-packages 2>&1 | head -20 || true
+
+      - name: Test NHO_NPM_TOKEN
+        if: inputs.secret_name == 'NHO_NPM_TOKEN'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NHO_NPM_TOKEN }}
+        run: |
+          echo "=== Secret: NHO_NPM_TOKEN ==="
+          echo "set? $([ -n "$NODE_AUTH_TOKEN" ] && echo yes || echo no)"
+          echo "prefix: $(echo "$NODE_AUTH_TOKEN" | cut -c1-8)"
+          echo ""
+          echo "=== whoami ==="
+          npm whoami
+          echo ""
+          echo "=== ping ==="
+          npm ping
+          echo ""
+          echo "=== access ls-packages (publish-scope check) ==="
+          npm access ls-packages 2>&1 | head -20 || true
