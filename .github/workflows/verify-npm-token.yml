@@ -54,7 +54,9 @@ jobs:
         run: |
           echo "=== Secret: NHO_NPM_TOKEN ==="
           echo "set? $([ -n "$NODE_AUTH_TOKEN" ] && echo yes || echo no)"
-          echo "prefix: $(echo "$NODE_AUTH_TOKEN" | cut -c1-8)"
+          echo "length: ${#NODE_AUTH_TOKEN}"
+          echo "first 8: $(echo "$NODE_AUTH_TOKEN" | cut -c1-8)"
+          echo "last 4:  $(echo "$NODE_AUTH_TOKEN" | rev | cut -c1-4 | rev)"
           echo ""
           echo "=== whoami ==="
           npm whoami
