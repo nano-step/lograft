@@ -71,6 +71,19 @@ jobs:
             esac
           fi
 
+      - name: Diagnose NHO_NPM_TOKEN
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NHO_NPM_TOKEN }}
+        run: |
+          echo "=== whoami ==="
+          npm whoami 2>&1 || echo "(whoami failed)"
+          echo ""
+          echo "=== ping ==="
+          npm ping 2>&1 || echo "(ping failed)"
+          echo ""
+          echo "=== token first 8 chars (to confirm it's set; safe to print npm_ prefix) ==="
+          echo "$NODE_AUTH_TOKEN" | cut -c1-8
+
       - name: Publish to npm
         run: pnpm publish --tag "${{ steps.tag.outputs.tag }}" --no-git-checks --access public --provenance
         env:
