@@ -71,36 +71,18 @@ interface ToolDefinition {
 }
 
 function toJsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
-  // Pragmatic minimal converter for our handful of input schemas; we expose
-  // the shape so MCP clients can build a tool form. Full JSON Schema
-  // generation isn't worth a heavy dep at this stage.
-  const def = (schema as { _def?: { typeName?: string } })._def;
-  if (def?.typeName === "ZodObject") {
-    const shape = (schema as unknown as { shape: Record<string, z.ZodTypeAny> }).shape;
-    const properties: Record<string, unknown> = {};
-    const required: string[] = [];
-    for (const [key, fieldSchema] of Object.entries(shape)) {
-      properties[key] = toJsonSchema(fieldSchema);
-      if (!(fieldSchema as { isOptional?: () => boolean }).isOptional?.()) {
-        required.push(key);
-      }
-    }
-    const result: Record<string, unknown> = {
-      type: "object",
-      properties,
-      additionalProperties: false,
-    };
-    if (required.length > 0) result.required = required;
-    return result;
+  // Use Zod v4's built-in JSON Schema converter — produces draft-2020-12.
+  // We strip the $schema field (MCP clients don't need / want it) and ensure
+  // the root is always { type: "object" } as required by the MCP spec
+  // (tools/list[].inputSchema MUST be an object schema).
+  const generated = z.toJSONSchema(schema, { target: "draft-2020-12" }) as Record<string, unknown>;
+  delete generated.$schema;
+  if (generated.type !== "object") {
+    // Defensive fallback: every tool input should be a zod object. If somehow
+    // it isn't, wrap it so MCP clients don't reject the tools list.
+    return { type: "object", properties: {}, additionalProperties: false };
   }
-  if (def?.typeName === "ZodString") return { type: "string" };
-  if (def?.typeName === "ZodNumber") return { type: "number" };
-  if (def?.typeName === "ZodBoolean") return { type: "boolean" };
-  if (def?.typeName === "ZodOptional") {
-    const inner = (schema as unknown as { _def: { innerType: z.ZodTypeAny } })._def.innerType;
-    return toJsonSchema(inner);
-  }
-  return {};
+  return generated;
 }
 
 function buildToolRegistry(): Map<string, ToolDefinition> {
