@@ -14,6 +14,7 @@ on:
           - verify-both
           - add-nhonh-as-owner
           - list-owners
+          - lookup-nhonh-user
 
 jobs:
   run:
@@ -60,6 +61,25 @@ jobs:
           echo ""
           echo "=== ping ==="
           npm ping
+
+      - name: Lookup nhonh user (authenticated via NPM_TOKEN)
+        if: inputs.mode == 'lookup-nhonh-user'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "=== Direct registry lookup (authed) ==="
+          curl -fsS -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
+            "https://registry.npmjs.org/-/user/org.couchdb.user:nhonh" \
+            | jq '{_id, name, email, date}' || echo "(lookup failed)"
+          echo ""
+          echo "=== Profile via /-/profile path ==="
+          curl -fsS -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
+            "https://registry.npmjs.org/-/profile" \
+            | jq '{name, email, fullname}' || echo "(profile failed)"
+          echo ""
+          echo "=== Search packages by maintainer:nhonh ==="
+          curl -fsS "https://registry.npmjs.org/-/v1/search?text=maintainer:nhonh&size=3" \
+            | jq '.objects[].package | {name, maintainers: [.maintainers[].username]}'
 
       - name: Add nhonh as co-owner (authenticated as nano-step001 via NPM_TOKEN)
         if: inputs.mode == 'add-nhonh-as-owner'
