@@ -114,23 +114,37 @@ jobs:
             || echo "(attempt 2 failed)"
           echo ""
 
-          echo "=== Attempt 3: Direct CouchDB-style PUT maintainers list ==="
-          echo "(get current package doc, append nhonh to maintainers, PUT back)"
+          echo "=== Attempt 3: Look up nhonh's real email using NHO_NPM_TOKEN (self-read) ==="
+          NHONH_PROFILE=$(curl -fsS -H "Authorization: Bearer $NHO_AUTH" \
+            "https://registry.npmjs.org/-/npm/v1/user" 2>&1)
+          echo "profile lookup: $(echo "$NHONH_PROFILE" | head -c 200)"
+          NHONH_EMAIL=$(echo "$NHONH_PROFILE" | jq -r '.email // empty')
+          NHONH_NAME=$(echo "$NHONH_PROFILE" | jq -r '.name // .username // empty')
+          echo "resolved: name='$NHONH_NAME' email='$NHONH_EMAIL'"
+          if [ -z "$NHONH_EMAIL" ]; then
+            echo "(could not resolve nhonh's email, falling back to nhoxtvt@gmail.com)"
+            NHONH_EMAIL="nhoxtvt@gmail.com"
+            NHONH_NAME="nhonh"
+          fi
+          echo ""
+
+          echo "=== Attempt 4: PUT maintainers with REAL email from nhonh's profile ==="
           DOC=$(curl -fsS -H "Authorization: Bearer $NPM_AUTH" \
             "https://registry.npmjs.org/lograft?write=true")
           REV=$(echo "$DOC" | jq -r '."_rev"')
           echo "current _rev: $REV"
-          UPDATED=$(echo "$DOC" | jq '.maintainers += [{"name":"nhonh","email":"nhoxtvt@gmail.com"}]')
-          echo "$UPDATED" | curl -fsS -X PUT \
+          UPDATED=$(echo "$DOC" | jq --arg n "$NHONH_NAME" --arg e "$NHONH_EMAIL" \
+            '.maintainers += [{"name":$n,"email":$e}]')
+          RESP=$(echo "$UPDATED" | curl -sS -X PUT \
             -H "Authorization: Bearer $NPM_AUTH" \
             -H "Content-Type: application/json" \
             --data @- \
             "https://registry.npmjs.org/lograft/-rev/$REV" \
-            && echo "(attempt 3 succeeded)" \
-            || echo "(attempt 3 failed)"
+            -w "\nHTTP_STATUS:%{http_code}\n" 2>&1)
+          echo "response: $RESP"
           echo ""
 
-          echo "=== Owners AFTER ==="
-          sleep 2
+          echo "=== Owners AFTER (with cache-buster) ==="
+          sleep 3
           curl -fsS "https://registry.npmjs.org/lograft?ts=$(date +%s)" \
             | jq -r '.maintainers[] | "\(.name) <\(.email)>"'
